@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Cloudflare Data Visualisation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --bg:#ffffff; --card:#f6f8fb; --muted:#5b6370; --fg:#0a0f1a; --acc:#0f62fe; --border:#e5e9f2; }
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,Segoe UI,Inter,Roboto,sans-serif}
+    header{padding:24px 16px;text-align:center;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:10}
+    h1{margin:0 0 6px;font-size:22px;letter-spacing:.2px}
+    .wrap{max-width:1120px;margin:0 auto;padding:16px}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px}
+    label{display:block;font-weight:600;margin-bottom:8px}
+    input[type=text], textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:#fff;color:var(--fg)}
+    textarea{min-height:100px; font-family: ui-monospace, Menlo, Consolas, monospace;}
+    .muted{color:var(--muted)}
+    .log{font-family:ui-monospace, Menlo, Consolas, monospace; white-space:pre-wrap; line-height:1.35; background:#fff; border:1px solid var(--border); border-radius:10px; padding:10px;}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef3ff;border:1px solid #d7e2ff;color:#26408b;font-size:12px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .right{justify-content:flex-end}
+    table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+    th,td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top}
+    th{background:#f9fbff;font-weight:600}
+    .source-card{margin:16px 0;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
+    a{color:var(--acc);text-decoration:none}
+    .charts-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px; }
+    .chart-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:12px; }
+    .chart-title { font-size:14px; font-weight:600; margin:0 0 8px; color:#1d2433; }
+    .inline { display:flex; gap:10px; align-items:center; }
+    .pill { border:1px solid var(--border); background:#fff; padding:8px 10px; border-radius:999px; cursor:pointer; }
+    .small { font-size:12px; color:var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Cloudflare Data Visualisation</h1>
+    <div class="muted">Paste a dataset URL or raw data, hit <b>Enter</b>. The agent parses → cleans → vectorizes → renders charts.</div>
+  </header>
+
+  <div class="wrap">
+    <!-- INPUT -->
+    <div class="panel">
+      <label>Dataset URL</label>
+      <input id="dataset" type="text" placeholder="e.g., https://universities.hipolabs.com/search?country=Canada" />
+      <div class="muted" style="margin-top:6px">Or paste raw data below (JSON/CSV). If both are present, URL wins.</div>
+      <label style="margin-top:12px">Pasted Data</label>
+      <textarea id="pasted" placeholder='e.g., {"data": {...}} or col1,col2&#10;v1,v2'></textarea>
+
+      <div class="row" style="margin-top:12px">
+        <div class="inline">
+          <span class="muted">Embed to Vectorize:</span>
+          <label class="pill"><input id="doEmbed" type="checkbox" checked /> enable</label>
+        </div>
+      </div>
+
+      <label style="margin-top:12px">Chart System Prompt (optional)</label>
+      <input id="sys" type="text" placeholder='e.g., "Highlight difficulty vs attack by role"' />
+      <div class="muted" style="margin-top:6px">Guides the auto-chart planner.</div>
+    </div>
+
+    <!-- THINKING LOG -->
+    <div class="panel" id="thinkingPanel" hidden>
+      <div class="row right"><span class="badge">thinking</span></div>
+      <h3 style="margin-top:0">Agent Log</h3>
+      <div id="log" class="log muted"></div>
+    </div>
+
+    <!-- SCHEMA -->
+    <div class="panel" id="schemaPanel" hidden>
+      <div class="row right"><span class="badge">schema</span></div>
+      <h3 style="margin-top:0">Detected Schema</h3>
+      <pre id="schemaOut" class="muted" style="background:#fff;border:1px solid var(--border);padding:10px;border-radius:10px"></pre>
+    </div>
+
+    <!-- SEARCH (ABOVE TABLE) -->
+    <div class="panel" id="searchPanel" hidden>
+      <div class="row right"><span class="badge">semantic search</span></div>
+      <h3 style="margin-top:0">Search Embedded Data</h3>
+      <input id="searchBox" type="text" placeholder="Type a query and press Enter (e.g., universities in Alberta). Use ; for multiple." />
+      <div id="searchResults" class="muted" style="margin-top:10px"></div>
+    </div>
+
+    <!-- CHARTS (ABOVE TABLE) -->
+    <div class="panel" id="chartsPanel" hidden>
+      <div class="row right"><span class="badge">charts</span></div>
+      <h3 style="margin-top:0">Auto Charts</h3>
+      <div class="row" style="margin-bottom:8px">
+        <input id="sysReplan" type="text" placeholder="Refine chart prompt and press Enter…" />
+        <span class="small">Replan charts from memory</span>
+      </div>
+      <div id="charts" class="charts-grid"></div>
+    </div>
+
+    <!-- TABLE (UNDER EVERYTHING ELSE) -->
+    <div class="panel" id="tablesPanel" hidden>
+      <div class="row right"><span class="badge">table</span></div>
+      <h3 style="margin-top:0">Preview</h3>
+      <div id="tables"></div>
+      <div class="row" style="margin-top:12px">
+        <button id="btnExport" class="pill">Export CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- UI logic -->
+  <script type="module" src="/logic.js"></script>
+
+  <!-- Charts (Recharts) with black strokes/fills for the “shadcn-like” look -->
+  <script type="module">
+    import React from "https://esm.sh/react@18.3.1";
+    import ReactDOM from "https://esm.sh/react-dom@18.3.1/client";
+    import {
+      ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell
+    } from "https://esm.sh/recharts@2.12.7";
+
+    const ChartCard = ({ title, children }) =>
+      React.createElement("div", { className: "chart-card" },
+        React.createElement("div", { className: "chart-title" }, title),
+        React.createElement("div", { style: { width: "100%", height: 280 } }, children)
+      );
+
+    const axisStyle = { stroke: "#000", fill: "#000" };
+    const gridStyle = { stroke: "#E6EAF2" };
+
+    function BarCountChart({ data, xKey, title }) {
+      return React.createElement(ChartCard, { title },
+        React.createElement(ResponsiveContainer, null,
+          React.createElement(BarChart, { data },
+            React.createElement(CartesianGrid, { stroke: gridStyle.stroke, vertical: false }),
+            React.createElement(XAxis, { dataKey: xKey, tick: axisStyle, stroke: "#000" }),
+            React.createElement(YAxis, { tick: axisStyle, stroke: "#000" }),
+            React.createElement(Tooltip, null),
+            React.createElement(Legend, null),
+            React.createElement(Bar, { dataKey: "count", fill: "#000", stroke: "#000" })
+          )
+        )
+      );
+    }
+
+    function LineMetricChart({ data, xKey, yKey, title }) {
+      return React.createElement(ChartCard, { title },
+        React.createElement(ResponsiveContainer, null,
+          React.createElement(LineChart, { data },
+            React.createElement(CartesianGrid, { stroke: gridStyle.stroke, vertical: false }),
+            React.createElement(XAxis, { dataKey: xKey, tick: axisStyle, stroke: "#000" }),
+            React.createElement(YAxis, { tick: axisStyle, stroke: "#000" }),
+            React.createElement(Tooltip, null),
+            React.createElement(Legend, null),
+            React.createElement(Line, { type: "monotone", dataKey: yKey, stroke: "#000" })
+          )
+        )
+      );
+    }
+
+    function PieSimple({ data, nameKey, valKey, title }) {
+      return React.createElement(ChartCard, { title },
+        React.createElement(ResponsiveContainer, null,
+          React.createElement(PieChart, null,
+            React.createElement(Tooltip, null),
+            React.createElement(Legend, null),
+            React.createElement(Pie, { data, dataKey: valKey, nameKey, outerRadius: 100 },
+              data.map((_, i) => React.createElement(Cell, { key: i, fill: "#000", stroke: "#000" }))
+            )
+          )
+        )
+      );
+    }
+
+    // expose to logic.js
+    // @ts-ignore
+    window.__charts = { React, ReactDOM, BarCountChart, LineMetricChart, PieSimple };
+  </script>
+</body>
+</html>

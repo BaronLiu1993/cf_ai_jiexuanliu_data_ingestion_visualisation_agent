@@ -1,0 +1,49 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "falling-bonus-907a",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-09-27",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"assets": {
+		"directory": "./public",
+		"binding": "ASSETS"
+	},
+	"ai": {
+		"binding": "AI"
+	},
+	"vars": {
+		"WORKERS_AI_MODEL": "@cf/meta/llama-3.1-8b-instruct",
+		"EMBED_MODEL": "@cf/baai/bge-base-en-v1.5"
+	},
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "DataAgent",
+				"class_name": "DataAgent"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": [
+				"DataAgent"
+			]
+		}
+	],
+	"observability": {
+		"enabled": true
+	},
+	"vectorize": [
+		{
+			"binding": "MEM",
+			"index_name": "agent_mem_index"
+		},
+		{
+			"binding": "VECTORIZE",
+			"index_name": "agent_mem_index"
+		},
+	]
+}
