@@ -2,174 +2,870 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Cloudflare Data Visualisation</title>
+  <title>Cloudflare Data Agent</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { --bg:#ffffff; --card:#f6f8fb; --muted:#5b6370; --fg:#0a0f1a; --acc:#0f62fe; --border:#e5e9f2; }
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,Segoe UI,Inter,Roboto,sans-serif}
-    header{padding:24px 16px;text-align:center;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:10}
-    h1{margin:0 0 6px;font-size:22px;letter-spacing:.2px}
-    .wrap{max-width:1120px;margin:0 auto;padding:16px}
-    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px}
-    label{display:block;font-weight:600;margin-bottom:8px}
-    input[type=text], textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:#fff;color:var(--fg)}
-    textarea{min-height:100px; font-family: ui-monospace, Menlo, Consolas, monospace;}
+    :root { --bg:#f4f7fa; --card-bg:#ffffff; --fg:#1a202c; --muted:#718096;
+            --acc:#2563eb; --acc-light:#eff6ff; --acc-dark:#1e40af;
+            --border:#e2e8f0; --shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --radius:0.75rem; }
+    *,*::before,*::after{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+    header{padding:1rem 1.5rem;text-align:center;border-bottom:1px solid var(--border);background:var(--card-bg);position:sticky;top:0;z-index:10;box-shadow:var(--shadow)}
+    h1{margin:0 0 .25rem;font-size:1.5rem;letter-spacing:-.02em}
+    h3{margin:0 0 1rem;font-size:1.125rem}
+    .wrap{max-width:1120px;margin:0 auto;padding:1.5rem 1rem}
+    .panel{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.5rem;box-shadow:var(--shadow)}
+    label{display:block;font-weight:500;margin-bottom:.5rem}
+    input[type=text],textarea{width:100%;padding:.75rem 1rem;border-radius:.5rem;border:1px solid var(--border);background:var(--bg);color:var(--fg);font:inherit;transition:border-color .2s,box-shadow .2s}
+    input[type=text]:focus,textarea:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-light)}
+    textarea{min-height:100px;font-family:ui-monospace,Menlo,Consolas,monospace}
     .muted{color:var(--muted)}
-    .log{font-family:ui-monospace, Menlo, Consolas, monospace; white-space:pre-wrap; line-height:1.35; background:#fff; border:1px solid var(--border); border-radius:10px; padding:10px;}
-    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef3ff;border:1px solid #d7e2ff;color:#26408b;font-size:12px}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
-    .right{justify-content:flex-end}
-    table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden}
-    th,td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top}
-    th{background:#f9fbff;font-weight:600}
-    .source-card{margin:16px 0;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
-    a{color:var(--acc);text-decoration:none}
-    .charts-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px; }
-    .chart-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:12px; }
-    .chart-title { font-size:14px; font-weight:600; margin:0 0 8px; color:#1d2433; }
-    .inline { display:flex; gap:10px; align-items:center; }
-    .pill { border:1px solid var(--border); background:#fff; padding:8px 10px; border-radius:999px; cursor:pointer; }
-    .small { font-size:12px; color:var(--muted); }
+    .log{font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;line-height:1.5;background:#0d1117;color:#c9d1d9;border-radius:.5rem;padding:1rem;max-height:300px;overflow-y:auto}
+    .badge{display:inline-block;padding:.25rem .75rem;border-radius:999px;background:var(--acc-light);border:1px solid var(--acc);color:var(--acc-dark);font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+    .flex-row{display:flex;gap:.75rem;flex-wrap:wrap}
+    .flex-end{justify-content:flex-end}
+    table{width:100%;border-collapse:collapse;background:var(--card-bg)}
+    th,td{border-bottom:1px solid var(--border);padding:.75rem 1rem;text-align:left;vertical-align:top}
+    th{background:#f8fafc;font-weight:600;color:#475569}
+    .table-container{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+    a{color:var(--acc);text-decoration:none;font-weight:500;transition:color .2s}
+    a:hover{color:var(--acc-dark);text-decoration:underline}
+    .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem}
+    .chart-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:1rem}
+    .chart-title{font-size:.875rem;font-weight:600;margin:0 0 .5rem;color:#334155}
+    .pill-label{border:1px solid var(--border);background:var(--card-bg);padding:.5rem .75rem;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;transition:background-color .2s}
+    .pill-label:hover{background-color:var(--acc-light)}
+    input[type=checkbox]{accent-color:var(--acc)}
+    .small{font-size:.875rem;color:var(--muted)}
+    .skeleton-loader{background:#e2e8f0;border-radius:.25rem;animation:pulse 1.5s cubic-bezier(.4,0,.6,1) infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    .skeleton-chart{width:100%;height:280px}
+    .skeleton-text{height:1em}
+    .skeleton-table-row{display:flex;gap:1rem;padding:.75rem 1rem}
+    .skeleton-table-cell{flex:1;height:1.25em}
+    .done-prompt{text-align:center;padding:1.5rem;background:var(--acc-light);border-radius:.5rem;margin-top:1rem}
+    #dataset{display:none} /* ignore URL */
+    #searchPanel{display:none} /* no vector search */
+    .actions{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.75rem}
+    .btn{border:1px solid var(--border);background:var(--card-bg);padding:.5rem .9rem;border-radius:.6rem;cursor:pointer}
+    .btn:hover{background:var(--acc-light)}
   </style>
-</head>
-<body>
-  <header>
-    <h1>Cloudflare Data Visualisation</h1>
-    <div class="muted">Paste a dataset URL or raw data, hit <b>Enter</b>. The agent parses → cleans → vectorizes → renders charts.</div>
-  </header>
 
-  <div class="wrap">
-    <!-- INPUT -->
-    <div class="panel">
-      <label>Dataset URL</label>
-      <input id="dataset" type="text" placeholder="e.g., https://universities.hipolabs.com/search?country=Canada" />
-      <div class="muted" style="margin-top:6px">Or paste raw data below (JSON/CSV). If both are present, URL wins.</div>
-      <label style="margin-top:12px">Pasted Data</label>
-      <textarea id="pasted" placeholder='e.g., {"data": {...}} or col1,col2&#10;v1,v2'></textarea>
+  <!-- Plotly for 3D scatter -->
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 
-      <div class="row" style="margin-top:12px">
-        <div class="inline">
-          <span class="muted">Embed to Vectorize:</span>
-          <label class="pill"><input id="doEmbed" type="checkbox" checked /> enable</label>
-        </div>
-      </div>
-
-      <label style="margin-top:12px">Chart System Prompt (optional)</label>
-      <input id="sys" type="text" placeholder='e.g., "Highlight difficulty vs attack by role"' />
-      <div class="muted" style="margin-top:6px">Guides the auto-chart planner.</div>
-    </div>
-
-    <!-- THINKING LOG -->
-    <div class="panel" id="thinkingPanel" hidden>
-      <div class="row right"><span class="badge">thinking</span></div>
-      <h3 style="margin-top:0">Agent Log</h3>
-      <div id="log" class="log muted"></div>
-    </div>
-
-    <!-- SCHEMA -->
-    <div class="panel" id="schemaPanel" hidden>
-      <div class="row right"><span class="badge">schema</span></div>
-      <h3 style="margin-top:0">Detected Schema</h3>
-      <pre id="schemaOut" class="muted" style="background:#fff;border:1px solid var(--border);padding:10px;border-radius:10px"></pre>
-    </div>
-
-    <!-- SEARCH (ABOVE TABLE) -->
-    <div class="panel" id="searchPanel" hidden>
-      <div class="row right"><span class="badge">semantic search</span></div>
-      <h3 style="margin-top:0">Search Embedded Data</h3>
-      <input id="searchBox" type="text" placeholder="Type a query and press Enter (e.g., universities in Alberta). Use ; for multiple." />
-      <div id="searchResults" class="muted" style="margin-top:10px"></div>
-    </div>
-
-    <!-- CHARTS (ABOVE TABLE) -->
-    <div class="panel" id="chartsPanel" hidden>
-      <div class="row right"><span class="badge">charts</span></div>
-      <h3 style="margin-top:0">Auto Charts</h3>
-      <div class="row" style="margin-bottom:8px">
-        <input id="sysReplan" type="text" placeholder="Refine chart prompt and press Enter…" />
-        <span class="small">Replan charts from memory</span>
-      </div>
-      <div id="charts" class="charts-grid"></div>
-    </div>
-
-    <!-- TABLE (UNDER EVERYTHING ELSE) -->
-    <div class="panel" id="tablesPanel" hidden>
-      <div class="row right"><span class="badge">table</span></div>
-      <h3 style="margin-top:0">Preview</h3>
-      <div id="tables"></div>
-      <div class="row" style="margin-top:12px">
-        <button id="btnExport" class="pill">Export CSV</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- UI logic -->
-  <script type="module" src="/logic.js"></script>
-
-  <!-- Charts (Recharts) with black strokes/fills for the “shadcn-like” look -->
+  <!-- Recharts -->
   <script type="module">
     import React from "https://esm.sh/react@18.3.1";
     import ReactDOM from "https://esm.sh/react-dom@18.3.1/client";
     import {
-      ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell
+      ResponsiveContainer, BarChart, Bar, LineChart, Line, AreaChart, Area,
+      XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell,
+      ScatterChart, Scatter
     } from "https://esm.sh/recharts@2.12.7";
 
     const ChartCard = ({ title, children }) =>
-      React.createElement("div", { className: "chart-card" },
-        React.createElement("div", { className: "chart-title" }, title),
-        React.createElement("div", { style: { width: "100%", height: 280 } }, children)
+      React.createElement("div",{className:"chart-card"},
+        React.createElement("div",{className:"chart-title"},title),
+        React.createElement("div",{style:{width:"100%",height:280}},children)
       );
-
-    const axisStyle = { stroke: "#000", fill: "#000" };
-    const gridStyle = { stroke: "#E6EAF2" };
+    const axisStyle = { stroke:"#475569", fill:"#475569", fontSize:12 };
+    const gridStyle = { stroke:"#e2e8f0" };
+    const COLORS = ["#2563eb","#4f46e5","#7c3aed","#db2777","#ea580c","#ca8a04","#059669","#14b8a6","#0ea5e9","#64748b"];
 
     function BarCountChart({ data, xKey, title }) {
-      return React.createElement(ChartCard, { title },
-        React.createElement(ResponsiveContainer, null,
-          React.createElement(BarChart, { data },
-            React.createElement(CartesianGrid, { stroke: gridStyle.stroke, vertical: false }),
-            React.createElement(XAxis, { dataKey: xKey, tick: axisStyle, stroke: "#000" }),
-            React.createElement(YAxis, { tick: axisStyle, stroke: "#000" }),
-            React.createElement(Tooltip, null),
-            React.createElement(Legend, null),
-            React.createElement(Bar, { dataKey: "count", fill: "#000", stroke: "#000" })
-          )
-        )
-      );
-    }
-
-    function LineMetricChart({ data, xKey, yKey, title }) {
-      return React.createElement(ChartCard, { title },
-        React.createElement(ResponsiveContainer, null,
-          React.createElement(LineChart, { data },
-            React.createElement(CartesianGrid, { stroke: gridStyle.stroke, vertical: false }),
-            React.createElement(XAxis, { dataKey: xKey, tick: axisStyle, stroke: "#000" }),
-            React.createElement(YAxis, { tick: axisStyle, stroke: "#000" }),
-            React.createElement(Tooltip, null),
-            React.createElement(Legend, null),
-            React.createElement(Line, { type: "monotone", dataKey: yKey, stroke: "#000" })
-          )
-        )
-      );
-    }
-
-    function PieSimple({ data, nameKey, valKey, title }) {
-      return React.createElement(ChartCard, { title },
-        React.createElement(ResponsiveContainer, null,
-          React.createElement(PieChart, null,
-            React.createElement(Tooltip, null),
-            React.createElement(Legend, null),
-            React.createElement(Pie, { data, dataKey: valKey, nameKey, outerRadius: 100 },
-              data.map((_, i) => React.createElement(Cell, { key: i, fill: "#000", stroke: "#000" }))
+      return React.createElement(ChartCard,{title},
+        React.createElement(ResponsiveContainer,null,
+          React.createElement(BarChart,{data,margin:{top:5,right:20,left:-10,bottom:5}},
+            React.createElement(CartesianGrid,{stroke:gridStyle.stroke,vertical:false}),
+            React.createElement(XAxis,{dataKey:xKey,tick:axisStyle,stroke:axisStyle.stroke}),
+            React.createElement(YAxis,{tick:axisStyle,stroke:axisStyle.stroke}),
+            React.createElement(Tooltip,null),
+            React.createElement(Bar,{dataKey:"count"},
+              data.map((_,i)=>React.createElement(Cell,{key:`cell-${i}`,fill:COLORS[i%COLORS.length]}))
             )
           )
         )
       );
     }
 
-    // expose to logic.js
-    // @ts-ignore
-    window.__charts = { React, ReactDOM, BarCountChart, LineMetricChart, PieSimple };
+    function LineMetricChart({ data, xKey, yKey, title }) {
+      return React.createElement(ChartCard,{title},
+        React.createElement(ResponsiveContainer,null,
+          React.createElement(LineChart,{data,margin:{top:5,right:20,left:-10,bottom:5}},
+            React.createElement(CartesianGrid,{stroke:gridStyle.stroke,vertical:false}),
+            React.createElement(XAxis,{dataKey:xKey,tick:axisStyle,stroke:axisStyle.stroke}),
+            React.createElement(YAxis,{tick:axisStyle,stroke:axisStyle.stroke}),
+            React.createElement(Tooltip,null),
+            React.createElement(Legend,null),
+            React.createElement(Line,{type:"monotone",dataKey:yKey,stroke:"#2563eb",strokeWidth:2})
+          )
+        )
+      );
+    }
+
+    function AreaMetricChart({ data, xKey, yKey, title }) {
+      return React.createElement(ChartCard,{title},
+        React.createElement(ResponsiveContainer,null,
+          React.createElement(AreaChart,{data,margin:{top:5,right:20,left:-10,bottom:5}},
+            React.createElement(CartesianGrid,{stroke:gridStyle.stroke,vertical:false}),
+            React.createElement(XAxis,{dataKey:xKey,tick:axisStyle,stroke:axisStyle.stroke}),
+            React.createElement(YAxis,{tick:axisStyle,stroke:axisStyle.stroke}),
+            React.createElement(Tooltip,null),
+            React.createElement(Legend,null),
+            React.createElement(Area,{type:"monotone",dataKey:yKey,stroke:"#4f46e5",fill:"#4f46e522",strokeWidth:2})
+          )
+        )
+      );
+    }
+
+    function PieSimple({ data, nameKey, valKey, title }) {
+      return React.createElement(ChartCard,{title},
+        React.createElement(ResponsiveContainer,null,
+          React.createElement(PieChart,null,
+            React.createElement(Tooltip,null),
+            React.createElement(Pie,{data,dataKey:valKey,nameKey,outerRadius:100,label:true},
+              data.map((_,i)=>React.createElement(Cell,{key:`cell-${i}`,fill:COLORS[i%COLORS.length]}))
+            )
+          )
+        )
+      );
+    }
+
+    function ScatterXYChart({ data, xKey, yKey, title }) {
+      return React.createElement(ChartCard,{title},
+        React.createElement(ResponsiveContainer,null,
+          React.createElement(ScatterChart,{margin:{top:5,right:20,left:-10,bottom:5}},
+            React.createElement(CartesianGrid,{stroke:gridStyle.stroke}),
+            React.createElement(XAxis,{type:"number",dataKey:xKey,tick:axisStyle,stroke:axisStyle.stroke}),
+            React.createElement(YAxis,{type:"number",dataKey:yKey,tick:axisStyle,stroke:axisStyle.stroke}),
+            React.createElement(Tooltip,null),
+            React.createElement(Scatter,{data,fill:"#7c3aed"})
+          )
+        )
+      );
+    }
+
+    window.__charts = { React, ReactDOM, BarCountChart, LineMetricChart, AreaMetricChart, PieSimple, ScatterXYChart };
+  </script>
+</head>
+<body>
+  <header>
+    <h1>Cloudflare Data Agent</h1>
+    <div class="muted">An AI agent that can ingest, analyze, and visualize your data.</div>
+  </header>
+
+  <div class="wrap">
+    <div class="panel">
+      <label for="dataset" class="muted">Dataset URL (ignored)</label>
+      <input id="dataset" type="text" placeholder="Ignored; paste data below" />
+      <div class="small" style="margin-top:.5rem">Paste raw data below (JSON/CSV). URL is not used.</div>
+
+      <label for="pasted" style="margin-top:1rem">Pasted Data</label>
+      <textarea id="pasted" placeholder='e.g., {"data":[{...}]} or col1,col2&#10;v1,v2'></textarea>
+
+      <div style="margin-top:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+        <label class="pill-label"><input id="doEmbed" type="checkbox" /> Embed data (vectorize)</label>
+        <div style="flex-grow:1;max-width:400px;">
+          <label for="sys" class="small">System / Chart Prompt (optional)</label>
+          <input id="sys" type="text" placeholder='e.g., "Focus on X vs Y"' />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btnOneShot" class="btn">One-Shot (Paste & Run)</button>
+      </div>
+    </div>
+
+    <div class="panel" id="thinkingPanel" hidden>
+      <div class="flex-row flex-end"><span class="badge">Agent Working</span></div>
+      <h3>Agent Log</h3>
+      <div id="log" class="log muted"></div>
+      <div id="donePrompt" class="done-prompt" hidden>
+        <h3 style="margin:0;">✅ Done!</h3>
+        <p class="muted" style="margin:.25rem 0 0;">Scroll down to see your results.</p>
+      </div>
+    </div>
+
+    <div class="panel" id="schemaPanel" hidden>
+      <div class="flex-row flex-end"><span class="badge">Schema</span></div>
+      <h3>Detected Schema</h3>
+      <pre id="schemaOut" class="muted" style="background:var(--bg);border:1px solid var(--border);padding:1rem;border-radius:.5rem;"></pre>
+    </div>
+
+    <div class="panel" id="chartsPanel" hidden>
+      <div class="flex-row flex-end"><span class="badge">Charts</span></div>
+      <h3>Auto-Generated Charts</h3>
+      <div class="flex-row" style="margin-bottom:1rem">
+        <input id="sysReplan" type="text" style="flex-grow:1;" placeholder="Refine chart prompt and press Enter…" />
+      </div>
+      <div id="charts" class="charts-grid"></div>
+      <div id="charts-loader" class="charts-grid" hidden>
+        <div class="skeleton-loader skeleton-chart"></div>
+        <div class="skeleton-loader skeleton-chart"></div>
+      </div>
+    </div>
+
+    <div class="panel" id="statsPanel" hidden>
+      <div class="flex-row flex-end"><span class="badge">Stats</span></div>
+      <h3>Summary Statistics</h3>
+      <div id="statsContent" class="small"></div>
+      <div style="margin-top:.75rem">
+        <strong>Insight</strong>
+        <div id="insightBlurb" class="small muted"></div>
+      </div>
+    </div>
+
+    <div class="panel" id="tablesPanel" hidden>
+      <div class="flex-row flex-end"><span class="badge">Data Preview</span></div>
+      <h3>Data Preview (first 500 rows)</h3>
+      <div id="tables"></div>
+      <div id="table-loader" class="table-container" hidden>
+        <div style="background:#f8fafc;font-weight:600;">
+          <div class="skeleton-table-row">
+            <div class="skeleton-loader skeleton-text" style="width:20%"></div>
+            <div class="skeleton-loader skeleton-text" style="width:30%"></div>
+            <div class="skeleton-loader skeleton-text" style="width:50%"></div>
+          </div>
+        </div>
+        <div><div class="skeleton-table-row"><div class="skeleton-loader skeleton-table-cell"></div><div class="skeleton-loader skeleton-table-cell"></div><div class="skeleton-loader skeleton-table-cell"></div></div></div>
+        <div><div class="skeleton-table-row"><div class="skeleton-loader skeleton-table-cell"></div><div class="skeleton-loader skeleton-table-cell"></div><div class="skeleton-loader skeleton-table-cell"></div></div></div>
+        <div><div class="skeleton-table-row"><div class="skeleton-loader skeleton-table-cell"></div><div class="skeleton-loader skeleton-table-cell"></div><div class="skeleton-loader skeleton-table-cell"></div></div></div>
+      </div>
+      <div class="flex-row" style="margin-top:1rem">
+        <button id="btnExport" class="pill-label">Export as CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    const datasetEl = document.getElementById('dataset');
+    const pastedEl  = document.getElementById('pasted');
+    const doEmbedEl = document.getElementById('doEmbed');
+    const sysEl     = document.getElementById('sys');
+
+    const chartsLoader = document.getElementById('charts-loader');
+    const tableLoader = document.getElementById('table-loader');
+    const donePrompt = document.getElementById('donePrompt');
+
+    const thinkingPanel = document.getElementById('thinkingPanel');
+    const logEl = document.getElementById('log');
+    const schemaPanel = document.getElementById('schemaPanel');
+    const schemaOut = document.getElementById('schemaOut');
+
+    const chartsPanel = document.getElementById('chartsPanel');
+    const chartsEl = document.getElementById('charts');
+    const sysReplanEl = document.getElementById('sysReplan');
+
+    const statsPanel = document.getElementById('statsPanel');
+    const statsContent = document.getElementById('statsContent');
+    const insightBlurb = document.getElementById('insightBlurb');
+
+    const tablesPanel = document.getElementById('tablesPanel');
+    const tablesEl = document.getElementById('tables');
+    const btnExport = document.getElementById('btnExport');
+
+    const btnOneShot = document.getElementById('btnOneShot');
+
+    window.__vectorPreview = null;
+
+    datasetEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') runDataset(); });
+    pastedEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) runDataset(); });
+    btnOneShot.addEventListener('click', runDataset);
+
+    sysReplanEl?.addEventListener('keydown', async (e) => {
+      if (e.key !== 'Enter') return;
+      const sys = (sysReplanEl.value || '').trim();
+      const res = await fetch('/replan_charts', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sys })
+      });
+      if (!res.ok) { appendLog(`✖ Replan error: ${res.status} ${res.statusText}`); return; }
+      const { specs } = await res.json();
+      ensureChartsVisible();
+      renderChartsFromSpecs(specs, window.__lastTable?.rows || []);
+    });
+
+    btnExport.addEventListener('click', async () => {
+      if (!window.__lastTable) return;
+      const { columns, rows } = window.__lastTable;
+      const res = await fetch('/export_csv', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ columns, rows })
+      });
+      if (!res.ok) { appendLog(`✖ Export error: ${res.status} ${res.statusText}`); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'data.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    async function runDataset() {
+      thinkingPanel.hidden = false;
+      schemaPanel.hidden = true;
+      tablesPanel.hidden = true;
+      chartsPanel.hidden = true;
+      statsPanel.hidden = true;
+      donePrompt.hidden = true;
+      chartsLoader.hidden = false;
+      tableLoader.hidden = false;
+      logEl.textContent = '';
+      schemaOut.textContent = '';
+      tablesEl.innerHTML = '';
+      chartsEl.innerHTML = '';
+      statsContent.innerHTML = '';
+      insightBlurb.textContent = '';
+
+      const body = {
+        url: undefined,
+        text: (pastedEl.value || '').trim() || undefined,
+        sys: (sysEl.value || '').trim() || undefined,
+        embed: !!doEmbedEl.checked
+      };
+
+      appendLog(`→ Starting${body.text ? ' pasted data' : ''}`);
+
+      const res = await fetch('/dataset_stream', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok || !res.body) {
+        appendLog(`✖ Error: ${res.status} ${res.statusText}`);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let idx;
+        while ((idx = buffer.indexOf('\n\n')) >= 0) {
+          const chunk = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 2);
+          const lines = chunk.split('\n');
+          let event = 'message';
+          let data = '';
+          for (const ln of lines) {
+            if (ln.startsWith('event:')) event = ln.slice(6).trim();
+            if (ln.startsWith('data:')) data += ln.slice(5).trim();
+          }
+          handleEvent(event, data);
+        }
+      }
+    }
+
+    function handleEvent(event, dataStr) {
+      let payload = {};
+      try { payload = dataStr ? JSON.parse(dataStr) : {}; }
+      catch { appendLog(`(parse) ${event}: ${dataStr}`); return; }
+
+      if (event === 'log') {
+        appendLog(payload.msg);
+        if (payload.msg === 'Done.') donePrompt.hidden = false;
+      } else if (event === 'warn') {
+        appendLog(`⚠ ${payload.msg}`);
+      } else if (event === 'schema') {
+        schemaPanel.hidden = false;
+        schemaOut.textContent = JSON.stringify(payload, null, 2);
+      } else if (event === 'insights') {
+        chartsLoader.hidden = true;
+        ensureChartsVisible();
+        renderChartsFromSpecs(payload.specs || [], payload.data || []);
+      } else if (event === 'table') {
+        tableLoader.hidden = true;
+        window.__lastTable = payload.table;
+        if (window.__vectorPreview) mergeVectorPreviewIntoTable(window.__vectorPreview);
+        tablesPanel.hidden = false;
+        tablesEl.innerHTML = renderNamedTable(window.__lastTable);
+
+        ensureChartsVisible();
+        // render a rich set even if insights don't arrive
+        renderChartsFallback(window.__lastTable.rows || []);
+        renderVectorScatter3D();
+      } else if (event === 'vectorized') {
+        appendLog(`Embedded rows: ${payload.count}`);
+        if (payload.preview) {
+          window.__vectorPreview = payload.preview;
+          if (window.__lastTable) {
+            mergeVectorPreviewIntoTable(payload.preview);
+            tablesEl.innerHTML = renderNamedTable(window.__lastTable);
+            ensureChartsVisible();
+            renderVectorScatter3D(payload.preview);
+          }
+        }
+      } else if (event === 'error') {
+        appendLog(`✖ ${payload.msg}`);
+        chartsLoader.hidden = true;
+        tableLoader.hidden = true;
+      }
+    }
+
+    function ensureChartsVisible() {
+      chartsPanel.hidden = false;
+      chartsLoader.hidden = true;
+    }
+
+    /* ---------- Vector preview → table columns v0..v5 ---------- */
+    function mergeVectorPreviewIntoTable(preview) {
+      const t = window.__lastTable;
+      if (!t || !Array.isArray(t.rows)) return;
+      const dimsToShow = 6;
+      for (let i = 0; i < dimsToShow; i++) {
+        const col = `v${i}`;
+        if (!t.columns.includes(col)) t.columns.push(col);
+      }
+      for (const p of preview) {
+        const idx = typeof p.rowIndex === 'number' ? p.rowIndex : -1;
+        if (idx < 0 || idx >= t.rows.length) continue;
+        const arr = Array.isArray(p.dims) ? p.dims : (Array.isArray(p.vector) ? p.vector : []);
+        for (let i = 0; i < dimsToShow; i++) {
+          const val = arr[i];
+          t.rows[idx][`v${i}`] = Number.isFinite(val) ? Number(val.toFixed(4)) : '';
+        }
+      }
+    }
+
+    async function waitForChartsLib(maxMs = 4000) {
+      const start = performance.now();
+      while (!window.__charts?.React || !window.__charts?.ReactDOM) {
+        await new Promise(r => setTimeout(r, 50));
+        if (performance.now() - start > maxMs) break;
+      }
+    }
+
+    /* ---------- Master renderer: specs + auto bundle ---------- */
+    function renderChartsFromSpecs(specs, rows) {
+      (async () => {
+        await waitForChartsLib();
+        const { React, ReactDOM, BarCountChart, LineMetricChart, AreaMetricChart, PieSimple, ScatterXYChart } = window.__charts || {};
+        chartsEl.innerHTML = '';
+        if (!React || !Array.isArray(rows) || rows.length === 0) return;
+
+        const items = [];
+
+        // 1) honor any valid specs
+        if (Array.isArray(specs) && specs.length) {
+          for (const s of specs) {
+            if (!s || !s.type || !s.x) continue;
+            const title = s.title || `${s.type} of ${s.y || 'count'} by ${s.x}`;
+            if (s.type === "bar" && (!s.y || s.agg === "count")) {
+              const data = groupCount(rows, s.x);
+              items.push(React.createElement(BarCountChart, { key: 'bar-'+title, title, data, xKey: s.x }));
+            } else if (s.type === "line" && s.y) {
+              const grouped = groupAgg(rows, s.x, s.y, s.agg || "mean");
+              items.push(React.createElement(LineMetricChart, { key: 'line-'+title, title, data: grouped, xKey: s.x, yKey: s.y }));
+            } else if (s.type === "pie" && s.y) {
+              const grouped = groupAgg(rows, s.x, s.y, s.agg || "sum");
+              items.push(React.createElement(PieSimple, { key: 'pie-'+title, title, data: grouped, nameKey: s.x, valKey: s.y }));
+            }
+          }
+        }
+
+        // 2) always add a diverse auto bundle
+        autoBundleCharts(items, rows);
+
+        const root = ReactDOM.createRoot(chartsEl);
+        root.render(React.createElement(React.Fragment, null, items));
+
+        renderStatsAndInsight(rows);
+        render3DScatter(rows);    // numeric 3D
+        renderVectorScatter3D();  // vector 3D if present
+      })();
+    }
+
+    /* ---------- Fallback = same auto bundle ---------- */
+    function renderChartsFallback(rows) {
+      (async () => {
+        await waitForChartsLib();
+        const { React, ReactDOM } = window.__charts || {};
+        if (!React) return;
+        chartsEl.innerHTML = '';
+        const items = [];
+        autoBundleCharts(items, rows);
+        const root = ReactDOM.createRoot(chartsEl);
+        root.render(React.createElement(React.Fragment, null, items));
+        renderStatsAndInsight(rows);
+      })();
+    }
+
+    /* ---------- Build a diverse set of charts ---------- */
+    function autoBundleCharts(items, rows) {
+      const { React, BarCountChart, PieSimple, LineMetricChart, AreaMetricChart, ScatterXYChart } = window.__charts || {};
+      if (!rows.length) {
+        items.push(React.createElement('div',{className:'muted'},'No data.'));
+        return;
+      }
+      const cols = Object.keys(rows[0] || {});
+      const { cat, num } = firstCategoricalAndNumeric(cols, rows);
+      const nums = numericColumns(cols, rows);
+
+      // Bar (counts by best categorical)
+      const barData = groupCount(rows, cat);
+      items.push(React.createElement(BarCountChart, { key:'auto-bar', title:`Count by ${cat}`, data: barData, xKey: cat }));
+
+      // Pie (same categorical share)
+      const pieData = barData.map(d => ({ [cat]: d[cat], value: d.count }));
+      items.push(React.createElement(PieSimple, { key:'auto-pie', title:`Share of ${cat}`, data: pieData, nameKey: cat, valKey: 'value' }));
+
+      // Line over time if a date-like column exists
+      const tcol = findTimeColumn(cols, rows);
+      if (tcol && num) {
+        const byTime = groupAggTime(rows, tcol, num, 'mean');
+        items.push(React.createElement(LineMetricChart, { key:'auto-line-time', title:`${num} over ${tcol} (mean)`, data: byTime, xKey:'__time__', yKey:num }));
+        // area variant too
+        items.push(React.createElement(AreaMetricChart, { key:'auto-area-time', title:`${num} over ${tcol} (area)`, data: byTime, xKey:'__time__', yKey:num }));
+      }
+
+      // Line by category (numeric aggregated)
+      if (num) {
+        const byCat = groupAgg(rows, cat, num, 'mean');
+        items.push(React.createElement(LineMetricChart, { key:'auto-line-cat', title:`Average ${num} by ${cat}`, data: byCat, xKey: cat, yKey: num }));
+      }
+
+      // 2D scatter (first two numeric)
+      if (nums.length >= 2) {
+        const [nx, ny] = nums.slice(0, 2);
+        const scatterData = rows
+          .map(r => ({ [nx]: toNum(r[nx]), [ny]: toNum(r[ny]) }))
+          .filter(d => Number.isFinite(d[nx]) && Number.isFinite(d[ny]))
+          .slice(0, 2000);
+        if (scatterData.length) {
+          items.push(React.createElement(ScatterXYChart, { key:'auto-scatter', title:`Scatter: ${nx} vs ${ny}`, data: scatterData, xKey: nx, yKey: ny }));
+        }
+      }
+
+      // Histogram of first numeric (10 bins)
+      if (nums.length >= 1) {
+        const hcol = nums[0];
+        const hist = buildHistogram(rows.map(r => toNum(r[hcol])).filter(Number.isFinite), 10);
+        const histRows = hist.map(b => ({ bin: `${fmt(b.lo)}–${fmt(b.hi)}`, count: b.n }));
+        items.push(React.createElement(BarCountChart, { key:'auto-hist', title:`Histogram of ${hcol}`, data: histRows, xKey:'bin' }));
+      }
+    }
+
+    function findTimeColumn(cols, rows) {
+      // choose the column that parses as date for majority of non-empty cells
+      let best = null, bestScore = 0;
+      for (const c of cols) {
+        let k=0,n=0;
+        for (const r of rows.slice(0,200)) {
+          const v = r[c];
+          if (v===''||v==null) continue;
+          k++;
+          const d = new Date(v);
+          if (!isNaN(d.getTime())) n++;
+        }
+        const ratio = k ? n/k : 0;
+        if (ratio > bestScore && ratio > 0.6) { bestScore = ratio; best = c; }
+      }
+      return best;
+    }
+
+    function groupAggTime(rows, tcol, y, agg) {
+      const buckets = new Map();
+      for (const r of rows) {
+        const d = new Date(r[tcol]);
+        if (isNaN(d.getTime())) continue;
+        const key = d.toISOString().slice(0,10); // day bucket
+        const raw = r[y];
+        const v = typeof raw === "number" ? raw : parseFloat(String(raw).replace(/,/g,""));
+        if (!Number.isFinite(v)) continue;
+        const cur = buckets.get(key) || { sum:0, n:0 };
+        cur.sum += v; cur.n += 1;
+        buckets.set(key, cur);
+      }
+      const arr = [...buckets.entries()].map(([k, s]) => ({ __time__: k, [y]: agg === "mean" ? s.sum / s.n : s.sum }));
+      arr.sort((a,b)=> a.__time__.localeCompare(b.__time__));
+      return arr;
+    }
+
+    function buildHistogram(values, bins=10) {
+      if (!values.length) return [];
+      const lo = Math.min(...values), hi = Math.max(...values);
+      const w = (hi - lo) || 1;
+      const step = w / bins;
+      const out = Array.from({length: bins}, (_,i)=>({lo: lo + i*step, hi: lo + (i+1)*step, n:0}));
+      for (const v of values) {
+        let idx = Math.floor((v - lo) / step);
+        if (idx >= bins) idx = bins-1;
+        if (idx < 0) idx = 0;
+        out[idx].n++;
+      }
+      return out;
+    }
+
+    /* ---------- 3D Scatter (numeric) ---------- */
+    function render3DScatter(rows) {
+      if (!rows || !rows.length) return;
+      const cols = Object.keys(rows[0] || {});
+      const numericCols = cols.filter(c => {
+        const vals = rows.map(r => r[c]).slice(0, 50);
+        let n = 0, k = 0;
+        for (const v of vals) {
+          if (v === '' || v == null) continue;
+          k++;
+          const num = typeof v === 'number' ? v : parseFloat(String(v).replace(/,/g,''));
+          if (Number.isFinite(num)) n++;
+        }
+        return k > 0 && n / k > 0.7;
+      });
+
+      let xCol, yCol, zCol;
+      if (numericCols.length >= 3) {
+        [xCol, yCol, zCol] = numericCols.slice(0,3);
+      } else {
+        xCol = numericCols[0] || '__row__';
+        yCol = numericCols[1] || '__row__';
+        zCol = numericCols[2] || '__row__';
+      }
+
+      const xs = rows.map((r,i)=> (xCol==='__row__'? i : toNum(r[xCol]))).filter(Number.isFinite);
+      const ys = rows.map((r,i)=> (yCol==='__row__'? i : toNum(r[yCol]))).filter(Number.isFinite);
+      const zs = rows.map((r,i)=> (zCol==='__row__'? i : toNum(r[zCol]))).filter(Number.isFinite);
+
+      addPlotCard(`3D Scatter: ${xCol} × ${yCol} × ${zCol}`, xs, ys, zs);
+    }
+
+    /* ---------- 3D Vector scatter using v0,v1,v2 or preview ---------- */
+    function renderVectorScatter3D(previewOpt) {
+      let xs = [], ys = [], zs = [];
+
+      if (window.__lastTable?.rows?.length) {
+        const rows = window.__lastTable.rows;
+        const hasV = rows.some(r => r.v0 !== undefined || r.v1 !== undefined || r.v2 !== undefined);
+        if (hasV) {
+          xs = rows.map(r => toNum(r.v0)).filter(Number.isFinite);
+          ys = rows.map(r => toNum(r.v1)).filter(Number.isFinite);
+          zs = rows.map(r => toNum(r.v2)).filter(Number.isFinite);
+        }
+      }
+
+      if ((!xs.length || !ys.length || !zs.length) && (previewOpt || window.__vectorPreview)) {
+        const pv = previewOpt || window.__vectorPreview || [];
+        xs = pv.map(p => toNum((p.dims?.[0] ?? p.vector?.[0])));
+        ys = pv.map(p => toNum((p.dims?.[1] ?? p.vector?.[1])));
+        zs = pv.map(p => toNum((p.dims?.[2] ?? p.vector?.[2])));
+        xs = xs.filter(Number.isFinite);
+        ys = ys.filter(Number.isFinite);
+        zs = zs.filter(Number.isFinite);
+      }
+
+      if (xs.length && ys.length && zs.length) {
+        addPlotCard('3D Vector Scatter (v0,v1,v2)', xs, ys, zs);
+      }
+    }
+
+    function addPlotCard(titleText, xs, ys, zs) {
+      const card = document.createElement('div');
+      card.className = 'chart-card';
+      const title = document.createElement('div');
+      title.className = 'chart-title';
+      title.textContent = titleText;
+      const plot = document.createElement('div');
+      plot.style.width = '100%';
+      plot.style.height = '280px';
+      card.appendChild(title);
+      card.appendChild(plot);
+      chartsEl.appendChild(card);
+
+      Plotly.newPlot(plot, [{
+        type: 'scatter3d',
+        mode: 'markers',
+        x: xs, y: ys, z: zs,
+        marker: { size: 3 }
+      }], {
+        margin: { l:0, r:0, t:0, b:0 },
+        scene: { xaxis:{title:titleText.split(': ')[1]?.split(' × ')[0]||'x'},
+                 yaxis:{title:titleText.split(' × ')[1]||'y'},
+                 zaxis:{title:titleText.split(' × ')[2]||'z'} }
+      }, {displayModeBar:false});
+    }
+
+    function toNum(v){ return (typeof v === 'number') ? v : parseFloat(String(v).replace(/,/g,'')); }
+
+    /* ---------- Stats & Insight ---------- */
+    function firstCategoricalAndNumeric(cols, rows) {
+      const isNumeric = (v) => typeof v === 'number' || /^-?\d+(\.\d+)?$/.test(String(v));
+      let cat=null, num=null;
+      for (const c of cols) {
+        const vals = rows.map(r=>r[c]).filter(v=>v!==''&&v!=null);
+        const numRatio = vals.length ? vals.filter(isNumeric).length/vals.length : 0;
+        if (cat===null && numRatio < 0.4) cat = c;
+        if (num===null && numRatio > 0.7) num = c;
+        if (cat && num) break;
+      }
+      return { cat: cat || cols[0], num };
+    }
+    function numericColumns(columns, rows) {
+      const out = [];
+      for (const c of columns) {
+        const vals = rows.map(r => r[c]).filter(v=>v!==''&&v!=null);
+        const nums = vals.map(v => typeof v === 'number' ? v : parseFloat(String(v).replace(/,/g,''))).filter(v=>Number.isFinite(v));
+        if (vals.length >= 5 && nums.length/vals.length > 0.7) out.push(c);
+      }
+      return out;
+    }
+    function basicStats(arr) {
+      const a = arr.filter(v => Number.isFinite(v)).slice().sort((x,y)=>x-y);
+      const n = a.length; if (!n) return null;
+      const sum = a.reduce((s,v)=>s+v,0);
+      const mean = sum/n;
+      const median = n%2 ? a[(n-1)/2] : (a[n/2-1]+a[n/2])/2;
+      const min=a[0], max=a[n-1];
+      const q1 = a[Math.floor((n-1)*0.25)];
+      const q3 = a[Math.floor((n-1)*0.75)];
+      const variance = a.reduce((s,v)=>s+(v-mean)**2,0)/(n>1?n-1:1);
+      const stdev = Math.sqrt(variance);
+      return { count:n, min, q1, median, mean, q3, max, stdev };
+    }
+    function renderStatsAndInsight(rows) {
+      if (!rows || !rows.length) { statsPanel.hidden = true; return; }
+      const cols = Object.keys(rows[0] || {});
+      const nums = numericColumns(cols, rows);
+      statsPanel.hidden = false;
+      if (!nums.length) {
+        statsContent.innerHTML = '<em>No numeric columns detected for statistics.</em>';
+        insightBlurb.textContent = 'The dataset appears categorical. The charts summarize category distributions.';
+        return;
+      }
+      const blocks = [];
+      for (const c of nums.slice(0,3)) {
+        const vals = rows.map(r => {
+          const raw = r[c];
+          return typeof raw === 'number' ? raw : parseFloat(String(raw).replace(/,/g,''));
+        }).filter(v => Number.isFinite(v));
+        const s = basicStats(vals); if (!s) continue;
+        blocks.push(
+          `<div style="margin:.25rem 0 .5rem">
+            <strong>${escapeHtml(c)}</strong>
+            <div class="small">
+              n=${s.count} · min=${fmt(s.min)} · Q1=${fmt(s.q1)} · median=${fmt(s.median)} · mean=${fmt(s.mean)} · Q3=${fmt(s.q3)} · max=${fmt(s.max)} · stdev=${fmt(s.stdev)}
+            </div>
+          </div>`
+        );
+      }
+      statsContent.innerHTML = blocks.join('') || '<em>No numeric stats available.</em>';
+
+      const { cat, num } = firstCategoricalAndNumeric(cols, rows);
+      let blurb = 'Automatic analysis: ';
+      if (num) {
+        const grouped = groupAgg(rows, cat, num, 'sum');
+        if (grouped.length) {
+          const total = grouped.reduce((s, r) => s + (Number(r[num])||0), 0);
+          const top = grouped[0];
+          const share = total ? (100 * Number(top[num]) / total) : 0;
+          blurb += `"${top[cat]}" contributes the largest share of total ${num} (${fmt(share)}%). `;
+          const statsForNum = basicStats(rows.map(r => {
+            const raw = r[num];
+            return typeof raw === 'number' ? raw : parseFloat(String(raw).replace(/,/g,''));
+          }).filter(Number.isFinite));
+          if (statsForNum) {
+            blurb += `Overall median ${num} is ${fmt(statsForNum.median)} (mean ${fmt(statsForNum.mean)}), suggesting ${statsForNum.mean > statsForNum.median ? 'a right-skew' : 'a left-skew'}.`;
+          }
+        } else {
+          blurb += `Used "${cat}" for grouping and "${num}" as metric but couldn’t aggregate values.`;
+        }
+      } else {
+        const counts = groupCount(rows, cat);
+        if (counts.length) {
+          const total = counts.reduce((s, r) => s + Number(r.count||0), 0);
+          const top = counts[0];
+          const share = total ? (100 * Number(top.count)/total) : 0;
+          blurb += `"${top[cat]}" is the most frequent ${cat} (${fmt(share)}% of rows).`;
+        } else {
+          blurb += 'Could not derive a stable grouping for insights.';
+        }
+      }
+      insightBlurb.textContent = blurb;
+    }
+
+    function fmt(x) {
+      if (!Number.isFinite(x)) return String(x);
+      if (Math.abs(x) >= 1000) return Intl.NumberFormat().format(Math.round(x));
+      return Number.isInteger(x) ? String(x) : x.toFixed(2);
+    }
+
+    /* ---------- Aggregation helpers ---------- */
+    function groupCount(rows, key) {
+      const map = new Map();
+      rows.forEach(r => {
+        const k = (r[key] ?? "").toString().trim() || "(blank)";
+        map.set(k, (map.get(k) || 0) + 1);
+      });
+      const arr = [...map.entries()].map(([k,count]) => ({ [key]: k, count }));
+      arr.sort((a,b)=>b.count-a.count);
+      return arr.slice(0, 40);
+    }
+    function groupAgg(rows, x, y, agg) {
+      const map = new Map();
+      for (const r of rows) {
+        const k = (r[x] ?? "").toString().trim() || "(blank)";
+        const raw = r[y];
+        const v = typeof raw === "number" ? raw : parseFloat(String(raw).replace(/,/g,""));
+        if (!Number.isFinite(v)) continue;
+        const cur = map.get(k) || { sum:0, n:0 };
+        cur.sum += v; cur.n += 1;
+        map.set(k, cur);
+      }
+      const arr = [...map.entries()].map(([k, s]) => ({
+        [x]: k,
+        [y]: agg === "mean" ? s.sum / s.n : s.sum
+      }));
+      arr.sort((a,b)=> (b[y]??0) - (a[y]??0));
+      return arr.slice(0, 40);
+    }
+
+    /* ---------- UI helpers ---------- */
+    function appendLog(line) {
+      const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+      logEl.innerHTML += `<b>[${ts}]</b> ${escapeHtml(line)}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function renderNamedTable(t) {
+      const head = '<tr>' + t.columns.map(h=>`<th>${escapeHtml(h)}</th>`).join('') + '</tr>';
+      const body = (t.rows || []).slice(0, 500).map(r => {
+        return '<tr>' + t.columns.map(c => {
+          const val = r[c];
+          if ((c === 'url' || (typeof val === 'string' && val?.startsWith('http'))) && val) {
+            return `<td><a href="${escapeAttr(String(val))}" target="_blank" rel="noreferrer">${escapeHtml(String(val))}</a></td>`;
+          }
+          return `<td>${escapeHtml(String(val ?? ""))}</td>`;
+        }).join('') + '</tr>';
+      }).join('');
+      const src = t.url ? `<a href="${escapeAttr(t.url)}" target="_blank" rel="noreferrer">source</a>` : '';
+      return `
+        <div style="margin:1rem 0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+            <strong>${escapeHtml(t.name || 'dataset')}</strong>
+            ${src}
+          </div>
+          <div class="table-container">
+            <div style="overflow-x:auto">
+              <table>${head}${body}</table>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function escapeHtml(s){return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m]))}
+    function escapeAttr(s){return String(s).replace(/"/g, '&quot;')}
   </script>
 </body>
 </html>

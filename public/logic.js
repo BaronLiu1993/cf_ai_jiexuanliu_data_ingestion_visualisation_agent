@@ -3,6 +3,11 @@ const pastedEl  = document.getElementById('pasted');
 const doEmbedEl = document.getElementById('doEmbed');
 const sysEl     = document.getElementById('sys');
 
+// New element references for loaders and prompts
+const chartsLoader = document.getElementById('charts-loader');
+const tableLoader = document.getElementById('table-loader');
+const donePrompt = document.getElementById('donePrompt');
+
 const thinkingPanel = document.getElementById('thinkingPanel');
 const logEl = document.getElementById('log');
 const schemaPanel = document.getElementById('schemaPanel');
@@ -36,7 +41,8 @@ sysReplanEl.addEventListener('keydown', async (e) => {
   });
   if (!res.ok) { appendLog(`✖ Replan error: ${res.status} ${res.statusText}`); return; }
   const { specs } = await res.json();
-  renderChartsFromSpecs(specs);
+  // Note: replan uses data from memory, stored in window.__lastTable
+  renderChartsFromSpecs(specs, window.__lastTable?.rows);
 });
 
 // Semantic search
@@ -92,7 +98,9 @@ async function runDataset() {
   tablesPanel.hidden = true;
   searchPanel.hidden = true;
   chartsPanel.hidden = true;
-
+  donePrompt.hidden = true;
+  chartsLoader.hidden = false;
+  tableLoader.hidden = false;
   logEl.textContent = '';
   schemaOut.textContent = '';
   tablesEl.innerHTML = '';
@@ -142,7 +150,6 @@ async function runDataset() {
       handleEvent(event, data);
     }
   }
-  appendLog('✓ Done');
 }
 
 function handleEvent(event, dataStr) {
@@ -152,18 +159,21 @@ function handleEvent(event, dataStr) {
 
   if (event === 'log') {
     appendLog(payload.msg);
+    if (payload.msg === 'Done.') {
+      donePrompt.hidden = false;
+    }
   } else if (event === 'warn') {
     appendLog(`⚠ ${payload.msg}`);
   } else if (event === 'schema') {
     schemaPanel.hidden = false;
     schemaOut.textContent = JSON.stringify(payload, null, 2);
-    // show search (above table) regardless of embedding result
     searchPanel.hidden = false;
   } else if (event === 'insights') {
+    chartsLoader.hidden = true;
     chartsPanel.hidden = false;
-    renderChartsFromSpecs(payload.specs || []);
+    renderChartsFromSpecs(payload.specs || [], payload.data || []);
   } else if (event === 'table') {
-    // Always render table LAST (under others)
+    tableLoader.hidden = true;
     window.__lastTable = payload.table;
     tablesPanel.hidden = false;
     tablesEl.innerHTML = renderNamedTable(payload.table);
@@ -171,35 +181,36 @@ function handleEvent(event, dataStr) {
     appendLog(`Embedded rows: ${payload.count}`);
   } else if (event === 'error') {
     appendLog(`✖ ${payload.msg}`);
+    chartsLoader.hidden = true;
+    tableLoader.hidden = true;
   }
 }
 
-function renderChartsFromSpecs(specs) {
+function renderChartsFromSpecs(specs, rows) {
   const { React, ReactDOM, BarCountChart, LineMetricChart, PieSimple } = window.__charts || {};
   if (!React) return;
   chartsEl.innerHTML = '';
-  const root = ReactDOM.createRoot(chartsEl);
+  if (!Array.isArray(rows) || rows.length === 0) return; // Don't render if no data
 
-  const table = window.__lastTable;
+  const root = ReactDOM.createRoot(chartsEl);
   const items = [];
-  if (Array.isArray(specs) && specs.length && table) {
-    const { rows } = table;
+  if (Array.isArray(specs) && specs.length) {
     for (const s of specs) {
       if (!s || !s.type || !s.x) continue;
       const title = s.title || `${s.type} of ${s.y || 'count'} by ${s.x}`;
       if (s.type === "bar" && (!s.y || s.agg === "count")) {
         const data = groupCount(rows, s.x);
-        items.push(window.__charts.React.createElement(BarCountChart, { key: title, title, data, xKey: s.x }));
+        items.push(React.createElement(BarCountChart, { key: title, title, data, xKey: s.x }));
       } else if (s.type === "line" && s.y) {
         const grouped = groupAgg(rows, s.x, s.y, s.agg || "mean");
-        items.push(window.__charts.React.createElement(LineMetricChart, { key: title, title, data: grouped, xKey: s.x, yKey: s.y }));
+        items.push(React.createElement(LineMetricChart, { key: title, title, data: grouped, xKey: s.x, yKey: s.y }));
       } else if (s.type === "pie" && s.y) {
         const grouped = groupAgg(rows, s.x, s.y, s.agg || "sum");
-        items.push(window.__charts.React.createElement(PieSimple, { key: title, title, data: grouped, nameKey: s.x, valKey: s.y }));
+        items.push(React.createElement(PieSimple, { key: title, title, data: grouped, nameKey: s.x, valKey: s.y }));
       }
     }
   }
-  root.render(window.__charts.React.createElement(window.__charts.React.Fragment, null, items));
+  root.render(React.createElement(React.Fragment, null, items));
 }
 
 /* ---------- Aggregation helpers ---------- */
@@ -234,30 +245,34 @@ function groupAgg(rows, x, y, agg) {
 
 /* ---------- UI helpers ---------- */
 function appendLog(line) {
-  const ts = new Date().toLocaleTimeString();
+  const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
   logEl.innerHTML += `<b>[${ts}]</b> ${escapeHtml(line)}\n`;
   logEl.scrollTop = logEl.scrollHeight;
 }
 
 function renderNamedTable(t) {
   const head = '<tr>' + t.columns.map(h=>`<th>${escapeHtml(h)}</th>`).join('') + '</tr>';
-  const body = (t.rows || []).slice(0, 300).map(r => {
+  const body = (t.rows || []).slice(0, 500).map(r => {
     return '<tr>' + t.columns.map(c => {
       const val = r[c];
-      if (c === 'url' && val) return `<td><a href="${escapeAttr(String(val))}" target="_blank" rel="noreferrer">${escapeHtml(String(val))}</a></td>`;
+      if ((c === 'url' || (typeof val === 'string' && val.startsWith('http'))) && val) {
+        return `<td><a href="${escapeAttr(String(val))}" target="_blank" rel="noreferrer">${escapeHtml(String(val))}</a></td>`;
+      }
       return `<td>${escapeHtml(String(val ?? ""))}</td>`;
     }).join('') + '</tr>';
   }).join('');
   return `
-  <div class="source-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <strong>${escapeHtml(t.name)}</strong>
-      <a href="${escapeAttr(t.url)}" target="_blank" rel="noreferrer">open source</a>
-    </div>
-    <div style="overflow:auto">
-      <table>${head}${body}</table>
-    </div>
-  </div>`;
+    <div style="margin:1rem 0;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem">
+        <strong>${escapeHtml(t.name)}</strong>
+        <a href="${escapeAttr(t.url)}" target="_blank" rel="noreferrer">source</a>
+      </div>
+      <div class="table-container">
+        <div style="overflow-x:auto">
+          <table>${head}${body}</table>
+        </div>
+      </div>
+    </div>`;
 }
 
 function renderSearchResults(data) {
@@ -267,7 +282,7 @@ function renderSearchResults(data) {
       if (r && r.matches) return blockForMatches(item.q, r.matches);
       if (r && r.warn)  return `<div><b>${escapeHtml(item.q)}</b><br/>⚠ ${escapeHtml(r.warn)}${r.debug ? `<br/><span class="small">${escapeHtml(r.debug)}</span>`:''}</div>`;
       return `<div><b>${escapeHtml(item.q)}</b><br/>No results.</div>`;
-    }).join('<hr/>');
+    }).join('');
   } else if (data && data.matches) {
     searchResults.innerHTML = blockForMatches(null, data.matches);
   } else if (data && data.warn) {
@@ -280,14 +295,33 @@ function renderSearchResults(data) {
 function blockForMatches(title, matches) {
   const items = matches.map(m => {
     const p = m.metadata || {};
+    const rowData = p.row || {};
     const src = p.url ? `<a href="${escapeAttr(String(p.url))}" target="_blank" rel="noreferrer">source</a>` : '';
-    const prev = p.preview ? escapeHtml(String(p.preview)) : '';
-    return `<div style="margin:8px 0">
-      <div><b>score:</b> ${Number(m.score).toFixed(3)} ${src ? `• ${src}` : ''}</div>
-      <div class="small">${prev}</div>
-    </div>`;
+    
+    const dataRows = Object.entries(rowData)
+      .map(([key, value]) => {
+        if (value === null || value === '') return ''; // Don't render empty values
+        const valStr = String(value);
+        let valHtml = escapeHtml(valStr);
+        if (typeof valStr === 'string' && valStr.startsWith('http')) {
+            valHtml = `<a href="${escapeAttr(valStr)}" target="_blank" rel="noreferrer">${valHtml}</a>`;
+        }
+        return `<div class="search-result-row"><dt>${escapeHtml(key)}</dt><dd>${valHtml}</dd></div>`;
+      })
+      .join('');
+
+    return `
+      <div class="search-result-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+          <span class="badge">Score: ${Number(m.score).toFixed(3)}</span>
+          ${src ? `<span class="small">${src}</span>` : ''}
+        </div>
+        <dl>${dataRows}</dl>
+      </div>`;
   }).join('');
-  return `<div>${title ? `<div><b>${escapeHtml(title)}</b></div>` : ''}${items || 'No matches.'}</div>`;
+  
+  const titleHtml = title ? `<h3 style="margin-bottom:1rem; font-size:1.125rem;">Results for: "${escapeHtml(title)}"</h3>` : '';
+  return `<div>${titleHtml}${items || 'No matches.'}</div>`;
 }
 
 function escapeHtml(s){return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m]))}

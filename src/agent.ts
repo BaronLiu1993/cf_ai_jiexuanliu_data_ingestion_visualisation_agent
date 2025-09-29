@@ -227,7 +227,7 @@ export default class DataAgent extends Agent<AgentEnv, State> {
 				await sse('schema', { name, url: datasetUrl ?? '(pasted)', columns, count: rows.length });
 
 				// Embeddings
-				const doEmbed = embed !== false; // default true
+				const doEmbed = embed === true;
 				if (!this.env.MEM) {
 					await sse('warn', { msg: 'Vectorize MEM binding missing; skipping embeddings.' });
 				} else if (doEmbed) {
@@ -247,7 +247,8 @@ export default class DataAgent extends Agent<AgentEnv, State> {
 				// Charts & insights (honor sys)
 				await sse('log', { msg: 'Planning charts & insights…' });
 				const specs = await this.planCharts(columns, rows.slice(0, 2000), sys);
-				await sse('insights', { specs });
+				await sse('insights', { specs, data: rows.slice(0, 2000) });
+
 
 				// Table LAST (so it shows under charts/search)
 				await sse('table', { table: { name, url: datasetUrl ?? '(pasted)', columns, rows: rows.slice(0, 500) } });
@@ -289,23 +290,21 @@ export default class DataAgent extends Agent<AgentEnv, State> {
     }
     
     // Force proper serialization by creating a completely new array
-    const cleanVector = [];
+    const cleanVector: number[] = [];
     for (let i = 0; i < vec.length; i++) {
       const num = Number(vec[i]);
       cleanVector.push(isFinite(num) ? num : 0.0);
     }
-
+  
     try {
-      const queryObject = {
-        vector: cleanVector,
+      const options = {
         topK: Math.max(1, Math.min(25, k))
       };
       
-      console.log(`Calling Vectorize with topK: ${queryObject.topK}`);
+      console.log(`Calling Vectorize with topK: ${options.topK}`);
       
-      const result = await (this.env.MEM as unknown as {
-        query: (args: { vector: number[]; topK: number }) => Promise<CFVectorQueryResult>;
-      }).query(queryObject);
+      // Correctly pass the vector first, then the options object.
+      const result = await this.env.MEM.query(cleanVector, options);
       
       console.log(`Vector search returned ${result.matches?.length || 0} matches`);
       return result;
@@ -549,9 +548,9 @@ Return ONLY a JSON array of indices (numbers).`,
 			});
 
 			const id = `ds:${this.hash(`${datasetName}:${i}:${text.slice(0, 128)}`)}`;
-			await (this.env.MEM as unknown as { upsert(points: CFVectorPoint[]): Promise<any> }).upsert([
-				{ id, values: cleanVector, metadata: { dataset: datasetName, url: sourceUrl, rowIndex: i, preview: text.slice(0, 200) } },
-			]);
+			await (this.env.MEM as any).upsert([
+        { id, values: cleanVector, metadata: { dataset: datasetName, url: sourceUrl, rowIndex: i, row: row } },
+      ]);
 			count++;
 		}
 		return count;
